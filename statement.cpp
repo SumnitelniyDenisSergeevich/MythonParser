@@ -38,13 +38,12 @@ namespace ast {
                 return closure.at(value);
             }
         }
-        else if (std::holds_alternative<vector<string>>(value_)) {          //"подумать"
-            
-            ObjectHolder ob_h;
+        else if (std::holds_alternative<vector<string>>(value_)) {
             vector<string>& values = get<vector<string>>(value_);
             if (values.size() == 1) {
                 return VariableValue{ *values.begin() }.Execute(closure, context);
             }
+            ObjectHolder ob_h;
             for (size_t i = 0; i + 1 < values.size(); ++i) {
                 if (closure.find(values.at(i)) != closure.end()) {
                     const auto& fields = closure.at(values.at(i)).TryAs<runtime::ClassInstance>()->Fields();
@@ -77,8 +76,7 @@ namespace ast {
     ObjectHolder Print::Execute(Closure& closure, Context& context) {
         if (argument_) {
             if (argument_->Execute(closure, context).TryAs<runtime::String>()) {
-                closure.at(argument_->Execute(closure, context).TryAs<runtime::String>()->GetValue()).Get()->Print(context.GetOutputStream(), context);
-                context.GetOutputStream() << '\n';
+                closure.at(argument_->Execute(closure, context).TryAs<runtime::String>()->GetValue())->Print(context.GetOutputStream(), context);
             }
         }
         else if (args_.size()) {
@@ -89,17 +87,14 @@ namespace ast {
                 }
                 b = true;
                 ObjectHolder obj_h = arg->Execute(closure, context);
-                if (!obj_h.Get()) {
+                if (!obj_h) {
                     context.GetOutputStream() << "None";
                     continue;
                 }
                 obj_h->Print(context.GetOutputStream(), context);
             }
-            context.GetOutputStream() << '\n';
         }
-        else {
-            context.GetOutputStream() << '\n';
-        }
+        context.GetOutputStream() << '\n';
         return {};
     }
 
@@ -116,53 +111,62 @@ namespace ast {
     }
 
     ObjectHolder Stringify::Execute(Closure& closure, Context& context) {
-        if (!argument_->Execute(closure, context).Get()) {
+        ObjectHolder Obj_h = argument_->Execute(closure, context);
+        if (!Obj_h) {
             return ObjectHolder::Own(runtime::String("None"s));
         }
         ostringstream o_stream;
-        argument_->Execute(closure, context).Get()->Print(o_stream, context);
+        Obj_h->Print(o_stream, context);
         return ObjectHolder::Own(runtime::String(o_stream.str()));
     }
 
     ObjectHolder Add::Execute(Closure& closure, Context& context) {
-        if (lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>() && rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()) {
-            int result = lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue() + rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue();
+        ObjectHolder lhs_obj_h = lhs_->Execute(closure, context);
+        ObjectHolder rhs_obj_h = rhs_->Execute(closure, context);
+        if (lhs_obj_h.TryAs<runtime::ValueObject<int>>() && rhs_obj_h.TryAs<runtime::ValueObject<int>>()) {
+            int result = lhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue() + rhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue();
             return runtime::ObjectHolder::Own(runtime::Number(result));
         }
-        else if (lhs_->Execute(closure, context).TryAs<runtime::ValueObject<string>>() && rhs_->Execute(closure, context).TryAs<runtime::ValueObject<string>>()) {
-            string result = lhs_->Execute(closure, context).TryAs<runtime::ValueObject<string>>()->GetValue() + rhs_->Execute(closure, context).TryAs<runtime::ValueObject<string>>()->GetValue();
+        else if (lhs_obj_h.TryAs<runtime::ValueObject<string>>() && rhs_obj_h.TryAs<runtime::ValueObject<string>>()) {
+            string result = lhs_obj_h.TryAs<runtime::ValueObject<string>>()->GetValue() + rhs_obj_h.TryAs<runtime::ValueObject<string>>()->GetValue();
             return runtime::ObjectHolder::Own(runtime::String(result));
         }
-        else if (lhs_->Execute(closure, context).TryAs<runtime::ClassInstance>()) {
-            if (lhs_->Execute(closure, context).TryAs<runtime::ClassInstance>()->HasMethod("__add__"s, 1U)) {
-                return lhs_->Execute(closure, context).TryAs<runtime::ClassInstance>()->Call("__add__"s, { rhs_->Execute(closure, context) }, context);
+        else if (lhs_obj_h.TryAs<runtime::ClassInstance>()) {
+            if (lhs_obj_h.TryAs<runtime::ClassInstance>()->HasMethod(ADD_METHOD, 1U)) {
+                return lhs_obj_h.TryAs<runtime::ClassInstance>()->Call(ADD_METHOD, { rhs_obj_h }, context);
             }
         }
         throw std::runtime_error("diffrent tipes or nullptr"s);
     }
 
     ObjectHolder Sub::Execute(Closure& closure, Context& context) {
-        if (lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>() && rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()) {
-            int result = lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue() - rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue();
+        ObjectHolder lhs_obj_h = lhs_->Execute(closure, context);
+        ObjectHolder rhs_obj_h = rhs_->Execute(closure, context);
+        if (lhs_obj_h.TryAs<runtime::ValueObject<int>>() && rhs_obj_h.TryAs<runtime::ValueObject<int>>()) {
+            int result = lhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue() - rhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue();
             return runtime::ObjectHolder::Own(runtime::Number(result));
         }
         throw std::runtime_error("diffrent tipes or nullptr"s);
     }
 
     ObjectHolder Mult::Execute(Closure& closure, Context& context) {
-        if (lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>() && rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()) {
-            int result = lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue() * rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue();
+        ObjectHolder lhs_obj_h = lhs_->Execute(closure, context);
+        ObjectHolder rhs_obj_h = rhs_->Execute(closure, context);
+        if (lhs_obj_h.TryAs<runtime::ValueObject<int>>() && rhs_obj_h.TryAs<runtime::ValueObject<int>>()) {
+            int result = lhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue() * rhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue();
             return runtime::ObjectHolder::Own(runtime::Number(result));
         }
         throw std::runtime_error("diffrent tipes or nullptr"s);
     }
 
     ObjectHolder Div::Execute(Closure& closure, Context& context) {
-        if (lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>() && rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()) {
-            if (rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue() == 0) {
+        ObjectHolder lhs_obj_h = lhs_->Execute(closure, context);
+        ObjectHolder rhs_obj_h = rhs_->Execute(closure, context);
+        if (lhs_obj_h.TryAs<runtime::ValueObject<int>>() && rhs_obj_h.TryAs<runtime::ValueObject<int>>()) {
+            if (rhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue() == 0) {
                 throw std::runtime_error("diffrent tipes or nullptr"s);
             }
-            int result = lhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue() / rhs_->Execute(closure, context).TryAs<runtime::ValueObject<int>>()->GetValue();
+            int result = lhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue() / rhs_obj_h.TryAs<runtime::ValueObject<int>>()->GetValue();
             return runtime::ObjectHolder::Own(runtime::Number(result));
         }
         throw std::runtime_error("diffrent tipes or nullptr"s);
@@ -170,11 +174,11 @@ namespace ast {
 
     ObjectHolder Compound::Execute(Closure& closure, Context& context) {
         for (unique_ptr<Statement>& stmt : stmts_) {
-            if (Return* d = dynamic_cast<Return*>(stmt.get()); d != nullptr) {
-                return d->Execute(closure, context);
+            if (Return* return_ptr = dynamic_cast<Return*>(stmt.get()); return_ptr != nullptr) {
+                return return_ptr->Execute(closure, context);
             }
-            if (IfElse* d = dynamic_cast<IfElse*>(stmt.get()); d != nullptr) {
-                if (ObjectHolder obj_h = d->Execute(closure, context); obj_h.Get()) {
+            if (IfElse* if_else_ptr = dynamic_cast<IfElse*>(stmt.get()); if_else_ptr != nullptr) {
+                if (ObjectHolder obj_h = if_else_ptr->Execute(closure, context); obj_h) {
                     return obj_h;
                 }
             }
@@ -214,7 +218,7 @@ namespace ast {
         if (runtime::IsTrue(condition_->Execute(closure, context))) {
             return if_body_->Execute(closure, context); 
         }
-        else if (else_body_.get()) {
+        else if (else_body_) {
             return else_body_->Execute(closure, context);
         }
         return {};
@@ -252,7 +256,6 @@ namespace ast {
     }
 
     NewInstance::NewInstance(const runtime::Class& cls, std::vector<std::unique_ptr<Statement>> args) : cls_(cls), args_(move(args)) {
-        
     }
 
     NewInstance::NewInstance(const runtime::Class& cls) : cls_(cls) {
@@ -260,14 +263,12 @@ namespace ast {
 
     ObjectHolder NewInstance::Execute(Closure& closure, Context& context) {
         ObjectHolder ob_h = ObjectHolder::Own(runtime::ClassInstance{ cls_ });
-        if (const runtime::Method* class_method = cls_.GetMethod("__init__"s); class_method) {
+        if (const runtime::Method* class_method = cls_.GetMethod(INIT_METHOD); class_method) {
             vector<ObjectHolder> args;
             for (const auto& arg : args_) {
                 args.push_back(arg->Execute(closure, context));
             }
-
             ob_h.TryAs<runtime::ClassInstance>()->Call(class_method->name, args, context);
-            
         }
         return ob_h;
     }
@@ -278,5 +279,4 @@ namespace ast {
     ObjectHolder MethodBody::Execute(Closure& closure, Context& context) {
         return body_->Execute(closure, context);
     }
-
 }  // namespace ast

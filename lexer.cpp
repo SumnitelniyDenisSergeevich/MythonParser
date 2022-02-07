@@ -4,8 +4,6 @@
 #include <charconv>
 #include <unordered_map>
 
-#include <iostream> //delete
-
 using namespace std;
 
 namespace parse {
@@ -78,16 +76,7 @@ namespace parse {
     }
 
     Lexer::Lexer(std::istream& input) : input_(input) {
-        while (input_.peek() == ' ' || input_.peek() == '\n' || input_.peek() == '#') {
-            if (input_.peek() == '#') {
-                while (input_.peek() != '\n' && !input_.eof()) {
-                    input_.get();
-                }
-            }
-            while (input_.peek() == ' ' || input_.peek() == '\n') {
-                input_.get();
-            }
-        }
+        ScipToBegin();
         current_token_ = NextToken();
     }
 
@@ -151,10 +140,8 @@ namespace parse {
         std::string id;
         id.push_back(peek);
         while (std::isalpha(input_.peek()) || std::isdigit(input_.peek()) || input_.peek() == '_') {
-            peek = input_.get();
-            id.push_back(peek);
+            id.push_back(input_.get());
         }
-
         if (key_words_.find(id) != key_words_.cend()) {
             return key_words_.at(id);
         }
@@ -174,7 +161,7 @@ namespace parse {
     }
 
     Token Lexer::GetStringTokenChoseQuote(char peek, char quote) {
-        static const std::unordered_map<char, char> escape_sequences{ {'n','\n'}, {'t','\t'}, {'\'','\''}, {'\"','\"'} };
+        const std::unordered_map<char, char> escape_sequences{ {'n','\n'}, {'t','\t'}, {'\'','\''}, {'\"','\"'} };
         string str;
         bool escaped = false;
         peek = input_.get();
@@ -231,12 +218,7 @@ namespace parse {
     Token* Lexer::GetIndentOrDedentToken(size_t dent_count) {
         if (dent_count > dent_count_) {
             size_t indent_count = dent_count - dent_count_;
-            if (indent_count == 1) {
-                ++dent_count_;
-                current_token_ = token_type::Indent{};
-                return &current_token_;
-            }
-            else if (indent_count > 1) {
+            if (indent_count > 0) {
                 ++dent_count_;
                 current_token_ = token_type::Indent{};
                 return &current_token_;
@@ -244,12 +226,7 @@ namespace parse {
         }
         else if (dent_count < dent_count_) {
             size_t dedent_count = dent_count_ - dent_count;
-            if (dedent_count == 1) {
-                --dent_count_;
-                current_token_ = token_type::Dedent{};
-                return &current_token_;
-            }
-            else if (dedent_count > 1) {
+            if (dedent_count > 0) {
                 --dent_count_;
                 current_token_ = token_type::Dedent{};
                 return &current_token_;
@@ -259,20 +236,33 @@ namespace parse {
         return nullptr;
     }
 
+    void Lexer::ScipToBegin() {
+        while (input_.peek() == ' ' || input_.peek() == '\n' || input_.peek() == '#') {
+            if (input_.peek() == '#') {
+                while (input_.peek() != '\n' && !input_.eof()) {
+                    input_.get();
+                }
+            }
+            while (input_.peek() == ' ' || input_.peek() == '\n') {
+                input_.get();
+            }
+        }
+    }
+
     void Lexer::CalcSpaceCount(size_t& space_count) {
-        bool go_flag;
+        bool new_line_flag;
         do {
             while (input_.peek() == ' ') {
                 ++space_count;
                 input_.get();
             }
-            go_flag = false;
+            new_line_flag = false;
             if (input_.peek() == '\n') {
                 input_.get();
                 space_count = 0;
-                go_flag = true;
+                new_line_flag = true;
             }
-        } while (go_flag);
+        } while (new_line_flag);
     }
 
     void Lexer::ScipComments() {

@@ -4,11 +4,15 @@
 #include <optional>
 #include <sstream>
 
-#include <iostream> //delete
-
 using namespace std;
 
 namespace runtime {
+
+    namespace {
+        const string LESS_METHOD = "__lt__"s;
+        const string EQ_METHOD = "__eq__"s;
+        const string STR_METHOD = "__str__"s;
+    }  // namespace
 
     ObjectHolder::ObjectHolder(std::shared_ptr<Object> data)
         : data_(std::move(data)) {
@@ -19,7 +23,6 @@ namespace runtime {
     }
 
     ObjectHolder ObjectHolder::Share(Object& object) {
-        // Возвращаем невладеющий shared_ptr (его deleter ничего не делает)
         return ObjectHolder(std::shared_ptr<Object>(&object, [](auto* /*p*/) { /* do nothing */ }));
     }
 
@@ -47,31 +50,19 @@ namespace runtime {
 
     bool IsTrue(const ObjectHolder& object) {
         if (object.TryAs<ValueObject<int>>()) {
-            if (object.TryAs<ValueObject<int>>()->GetValue() == 0) {
-                return false;
-            }
-            else {
-                return true;
-            }
+            return object.TryAs<ValueObject<int>>()->GetValue() != 0;
         }
         else if (object.TryAs<ValueObject<string>>()) {
-            if (object.TryAs<ValueObject<string>>()->GetValue() == ""s) {
-                return false;
-            }
-            else {
-                return true;
-            }
+            return object.TryAs<ValueObject<string>>()->GetValue() != ""s;
         }
         else if (object.TryAs<ValueObject<bool>>()) {
-            if (object.TryAs<ValueObject<bool>>()->GetValue() == true) {
-                return true;
-            }
+            return object.TryAs<ValueObject<bool>>()->GetValue();
         }
         return false;
     }
 
     void ClassInstance::Print(std::ostream& os, Context& context) {
-        if (const Method* class_method = cls_.GetMethod("__str__"s); class_method) {
+        if (const Method* class_method = cls_.GetMethod(STR_METHOD); class_method) {
             this->Call(class_method->name, {}, context)->Print(os,context);
         }
         else {
@@ -80,8 +71,7 @@ namespace runtime {
     }
 
     bool ClassInstance::HasMethod(const std::string& method, size_t argument_count) const {
-        const Method* class_method = cls_.GetMethod(method);
-        if (class_method) {
+        if (const Method* class_method = cls_.GetMethod(method); class_method) {
             if (argument_count == class_method->formal_params.size()) {
                 return true;
             }
@@ -105,10 +95,10 @@ namespace runtime {
         Context& context) {
         const Method* class_method = cls_.GetMethod(method);
         if (!class_method) {
-            throw std::runtime_error("there is no such method"s);
+            throw std::runtime_error("undeclareted method"s);
         }
         else if (class_method->formal_params.size() != actual_args.size()) {
-            throw std::runtime_error("there is no such method"s);
+            throw std::runtime_error("undeclareted method"s);
         }
         Closure closure;
         closure["self"] = ObjectHolder::Share(*this);
@@ -143,35 +133,20 @@ namespace runtime {
 
     bool Equal(const ObjectHolder& lhs, const ObjectHolder& rhs, [[maybe_unused]] Context& context) {
         if (lhs.TryAs<ValueObject<int>>() && rhs.TryAs<ValueObject<int>>()) {
-            if (lhs.TryAs<ValueObject<int>>()->GetValue() == rhs.TryAs<ValueObject<int>>()->GetValue()) {
-                return true;
-            }
-            else {
-                return false;
-            }
+            return lhs.TryAs<ValueObject<int>>()->GetValue() == rhs.TryAs<ValueObject<int>>()->GetValue();
         }
         else if (lhs.TryAs<ValueObject<string>>() && rhs.TryAs<ValueObject<string>>()) {
-            if (lhs.TryAs<ValueObject<string>>()->GetValue() == rhs.TryAs<ValueObject<string>>()->GetValue()) {
-                return true;
-            }
-            else {
-                return false;
-            }
+            return lhs.TryAs<ValueObject<string>>()->GetValue() == rhs.TryAs<ValueObject<string>>()->GetValue();
         }
         else if (lhs.TryAs<ValueObject<bool>>() && rhs.TryAs<ValueObject<bool>>()) {
-            if (lhs.TryAs<ValueObject<bool>>()->GetValue() == rhs.TryAs<ValueObject<bool>>()->GetValue()) {
-                return true;
-            }
-            else {
-                return false;
-            }
+            return lhs.TryAs<ValueObject<bool>>()->GetValue() == rhs.TryAs<ValueObject<bool>>()->GetValue();
         }
-        else if (lhs.Get() == nullptr && rhs.Get() == nullptr) {
+        else if (!lhs && !rhs) {
             return true;
         }
         else if (lhs.TryAs<ClassInstance>()) {
-            if (lhs.TryAs<ClassInstance>()->HasMethod("__eq__", 1U)) {
-                return IsTrue(lhs.TryAs<ClassInstance>()->Call("__eq__"s, { rhs }, context));
+            if (lhs.TryAs<ClassInstance>()->HasMethod(EQ_METHOD, 1U)) {
+                return IsTrue(lhs.TryAs<ClassInstance>()->Call(EQ_METHOD, { rhs }, context));
             }
         }
         throw std::runtime_error("diffrent tipes"s);
@@ -179,32 +154,17 @@ namespace runtime {
 
     bool Less(const ObjectHolder& lhs, const ObjectHolder& rhs, [[maybe_unused]] Context& context) {
         if (lhs.TryAs<ValueObject<int>>() && rhs.TryAs<ValueObject<int>>()) {
-            if (lhs.TryAs<ValueObject<int>>()->GetValue() < rhs.TryAs<ValueObject<int>>()->GetValue()) {
-                return true;
-            }
-            else {
-                return false;
-            }
+            return lhs.TryAs<ValueObject<int>>()->GetValue() < rhs.TryAs<ValueObject<int>>()->GetValue();
         }
         else if (lhs.TryAs<ValueObject<string>>() && rhs.TryAs<ValueObject<string>>()) {
-            if (lhs.TryAs<ValueObject<string>>()->GetValue() < rhs.TryAs<ValueObject<string>>()->GetValue()) {
-                return true;
-            }
-            else {
-                return false;
-            }
+            return lhs.TryAs<ValueObject<string>>()->GetValue() < rhs.TryAs<ValueObject<string>>()->GetValue();
         }
         else if (lhs.TryAs<ValueObject<bool>>() && rhs.TryAs<ValueObject<bool>>()) {
-            if (lhs.TryAs<ValueObject<bool>>()->GetValue() < rhs.TryAs<ValueObject<bool>>()->GetValue()) {
-                return true;
-            }
-            else {
-                return false;
-            }
+            return lhs.TryAs<ValueObject<bool>>()->GetValue() < rhs.TryAs<ValueObject<bool>>()->GetValue();
         }
         else if (lhs.TryAs<ClassInstance>()) {
-            if (lhs.TryAs<ClassInstance>()->HasMethod("__lt__", 1U)) {
-                return IsTrue(lhs.TryAs<ClassInstance>()->Call("__lt__"s, { rhs }, context));
+            if (lhs.TryAs<ClassInstance>()->HasMethod(LESS_METHOD, 1U)) {
+                return IsTrue(lhs.TryAs<ClassInstance>()->Call(LESS_METHOD, { rhs }, context));
             }
         }
         throw std::runtime_error("diffrent tipes"s);
@@ -215,24 +175,15 @@ namespace runtime {
     }
 
     bool Greater(const ObjectHolder& lhs, const ObjectHolder& rhs, [[maybe_unused]] Context& context) {
-        if (!Less(lhs, rhs, context) && !Equal(lhs, rhs, context)) {
-            return true;
-        }
-        return false;
+        return (!Less(lhs, rhs, context) && !Equal(lhs, rhs, context));
     }
 
     bool LessOrEqual(const ObjectHolder& lhs, const ObjectHolder& rhs, [[maybe_unused]] Context& context) {
-        if (Less(lhs, rhs, context) || Equal(lhs, rhs, context)) {
-            return true;
-        }
-        return false;
+        return (Less(lhs, rhs, context) || Equal(lhs, rhs, context));
     }
 
     bool GreaterOrEqual(const ObjectHolder& lhs, const ObjectHolder& rhs, [[maybe_unused]] Context& context) {
-        if (!Less(lhs, rhs, context)) {
-            return true;
-        }
-        return false;
+        return (!Less(lhs, rhs, context));
     }
 
 }  // namespace runtime
