@@ -132,6 +132,15 @@ namespace ast {
     public:
         using BinaryOperation::BinaryOperation;
 
+        template <typename CheckType, typename ResultType>
+        runtime::ObjectHolder AddStatements(const runtime::ObjectHolder& lhs, const runtime::ObjectHolder& rhs) {
+            if (lhs.TryAs<runtime::ValueObject<CheckType>>() && rhs.TryAs<runtime::ValueObject<CheckType>>()) {
+                CheckType result = lhs.TryAs<runtime::ValueObject<CheckType>>()->GetValue() + rhs.TryAs<runtime::ValueObject<CheckType>>()->GetValue();
+                return runtime::ObjectHolder::Own(ResultType(result));
+            }
+            return {};
+        }
+
         runtime::ObjectHolder Execute(runtime::Closure& closure, runtime::Context& context) override;
     };
 

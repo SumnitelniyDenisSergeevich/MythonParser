@@ -138,6 +138,22 @@ namespace runtime {
         Closure closure_;
     };
 
+    template <typename Type>
+    ObjectHolder EqualObjectHolders(const ObjectHolder& lhs, const ObjectHolder& rhs) {
+        if (lhs.TryAs<ValueObject<Type>>() && rhs.TryAs<ValueObject<Type>>()) {
+            return ObjectHolder::Own(runtime::Bool{ lhs.TryAs<ValueObject<Type>>()->GetValue() == rhs.TryAs<ValueObject<Type>>()->GetValue() });
+        }
+        return {};
+    }
+
+    template <typename Type>
+    ObjectHolder LessObjectHolders(const ObjectHolder& lhs, const ObjectHolder& rhs) {
+        if (lhs.TryAs<ValueObject<Type>>() && rhs.TryAs<ValueObject<Type>>()) {
+            return ObjectHolder::Own(runtime::Bool{ lhs.TryAs<ValueObject<Type>>()->GetValue() < rhs.TryAs<ValueObject<Type>>()->GetValue() });
+        }
+        return {};
+    }
+
     bool Equal(const ObjectHolder& lhs, const ObjectHolder& rhs, Context& context);
 
     bool Less(const ObjectHolder& lhs, const ObjectHolder& rhs, Context& context);

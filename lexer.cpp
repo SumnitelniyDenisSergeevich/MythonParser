@@ -90,8 +90,8 @@ namespace parse {
             CalcSpaceCount(space_count);
             size_t dent_count = space_count / 2;
 
-            if (Token* tok = GetIndentOrDedentToken(dent_count); tok) {
-                return *tok;
+            if (Token* token = GetIndentOrDedentToken(dent_count); token) {
+                return *token;
             }
             space_count = 0;
         }

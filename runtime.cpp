@@ -62,8 +62,8 @@ namespace runtime {
     }
 
     void ClassInstance::Print(std::ostream& os, Context& context) {
-        if (const Method* class_method = cls_.GetMethod(STR_METHOD); class_method) {
-            this->Call(class_method->name, {}, context)->Print(os,context);
+        if (this->HasMethod(STR_METHOD, 0U)) {
+            this->Call(STR_METHOD, {}, context)->Print(os,context);
         }
         else {
             os << this;
@@ -93,6 +93,7 @@ namespace runtime {
     ObjectHolder ClassInstance::Call(const std::string& method,
         const std::vector<ObjectHolder>& actual_args,
         Context& context) {
+
         const Method* class_method = cls_.GetMethod(method);
         if (!class_method) {
             throw std::runtime_error("undeclareted method"s);
@@ -131,15 +132,16 @@ namespace runtime {
         os << (GetValue() ? "True"sv : "False"sv);
     }
 
-    bool Equal(const ObjectHolder& lhs, const ObjectHolder& rhs, [[maybe_unused]] Context& context) {
-        if (lhs.TryAs<ValueObject<int>>() && rhs.TryAs<ValueObject<int>>()) {
-            return lhs.TryAs<ValueObject<int>>()->GetValue() == rhs.TryAs<ValueObject<int>>()->GetValue();
+    bool Equal(const ObjectHolder& lhs, const ObjectHolder& rhs, Context& context) {
+        ObjectHolder obj_holder;
+        if (obj_holder = EqualObjectHolders<int>(lhs, rhs); obj_holder) {
+            return obj_holder.TryAs<runtime::Bool>()->GetValue();
         }
-        else if (lhs.TryAs<ValueObject<string>>() && rhs.TryAs<ValueObject<string>>()) {
-            return lhs.TryAs<ValueObject<string>>()->GetValue() == rhs.TryAs<ValueObject<string>>()->GetValue();
+        else if (obj_holder = EqualObjectHolders<string>(lhs, rhs); obj_holder) {
+            return obj_holder.TryAs<runtime::Bool>()->GetValue();
         }
-        else if (lhs.TryAs<ValueObject<bool>>() && rhs.TryAs<ValueObject<bool>>()) {
-            return lhs.TryAs<ValueObject<bool>>()->GetValue() == rhs.TryAs<ValueObject<bool>>()->GetValue();
+        else if (obj_holder = EqualObjectHolders<bool>(lhs, rhs); obj_holder) {
+            return obj_holder.TryAs<runtime::Bool>()->GetValue();
         }
         else if (!lhs && !rhs) {
             return true;
@@ -152,15 +154,16 @@ namespace runtime {
         throw std::runtime_error("diffrent tipes"s);
     }
 
-    bool Less(const ObjectHolder& lhs, const ObjectHolder& rhs, [[maybe_unused]] Context& context) {
-        if (lhs.TryAs<ValueObject<int>>() && rhs.TryAs<ValueObject<int>>()) {
-            return lhs.TryAs<ValueObject<int>>()->GetValue() < rhs.TryAs<ValueObject<int>>()->GetValue();
+    bool Less(const ObjectHolder& lhs, const ObjectHolder& rhs, Context& context) {
+        ObjectHolder obj_holder;
+        if (obj_holder = LessObjectHolders<int>(lhs, rhs); obj_holder) {
+            return obj_holder.TryAs<runtime::Bool>()->GetValue();
         }
-        else if (lhs.TryAs<ValueObject<string>>() && rhs.TryAs<ValueObject<string>>()) {
-            return lhs.TryAs<ValueObject<string>>()->GetValue() < rhs.TryAs<ValueObject<string>>()->GetValue();
+        else if (obj_holder = LessObjectHolders<string>(lhs, rhs); obj_holder) {
+            return obj_holder.TryAs<runtime::Bool>()->GetValue();
         }
-        else if (lhs.TryAs<ValueObject<bool>>() && rhs.TryAs<ValueObject<bool>>()) {
-            return lhs.TryAs<ValueObject<bool>>()->GetValue() < rhs.TryAs<ValueObject<bool>>()->GetValue();
+        else if (obj_holder = LessObjectHolders<bool>(lhs, rhs); obj_holder) {
+            return obj_holder.TryAs<runtime::Bool>()->GetValue();
         }
         else if (lhs.TryAs<ClassInstance>()) {
             if (lhs.TryAs<ClassInstance>()->HasMethod(LESS_METHOD, 1U)) {
